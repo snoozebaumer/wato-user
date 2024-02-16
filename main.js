@@ -1,27 +1,58 @@
 const bodyParser = require("body-parser");
 const express = require("express");
+const {MongoClient, ServerApiVersion, ObjectId} = require("mongodb");
 const server = express();
 require('dotenv').config();
 
 
 server.use(bodyParser.json());
+const port = 4567;
+
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}/?retryWrites=true&w=majority`;
+
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
+});
+
 
 server.post('/user', async (req, res) => {
-    console.log(req.body);
-    res.send("User posted");
+    const name = req.body.name;
+    try {
+        await client.connect();
+        const db = await client.db(process.env.DB_NAME);
+        const id = (await db.collection("user").insertOne({name: name})).insertedId;
+        res.send({"id": id.toString()});
+    }   catch (e) {
+        res.status(500).send(e);
+    }
+    finally {
+        await client.close();
+        res.end();
+    }
 });
 
 server.get('/user/:id', async(req, res) => {
-    console.log(req.params.id);
+    const id = req.params.id;
 
-    const result = "User with id " + req.params.id + " found.";
-    if (result) {
-        res.send(result);
-    } else {
-        res.status(404);
+    try {
+        await client.connect();
+        const db = await client.db("user");
+        const user = await db.collection("user").findOne({_id: new ObjectId(id)});
+        res.send(user);
+    }   catch (e) {
+        res.status(404).send(e);
     }
-
-    res.end();
+    finally {
+        await client.close();
+        res.end();
+    }
 });
 
-server.listen(4567);
+server.listen(port, () => {
+    console.log("USER: listening on port ", port);
+});
