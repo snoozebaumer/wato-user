@@ -33,7 +33,6 @@ server.post('/user', async (req, res) => {
         console.error(`USER: could not create user ${name} with error: `, e.message);
         res.status(500).send(e);
     } finally {
-        await client.close();
         res.end();
     }
 });
@@ -46,12 +45,11 @@ server.get('/user/:id', async (req, res) => {
         const db = await client.db(process.env.DB_NAME);
         const user = await db.collection('user').findOne({_id: new ObjectId(id)});
         console.log('USER: fetched user with id: ' + id);
-        res.send(user);
+        res.send({id, name: user.name});
     } catch (e) {
         console.error(`USER: could not fetch user with id: ${id} with error: `, e.message);
         res.status(404).send(e);
     } finally {
-        await client.close();
         res.end();
     }
 });
